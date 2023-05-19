@@ -1,0 +1,124 @@
+// Importe as bibliotecas necessárias
+const venom = require('venom-bot');
+
+// Crie um cliente do Venom
+venom
+  .create({
+    session: 'Bot-Felipe',
+  })
+  .then((venombot) => startBot(venombot))
+  .catch((error) => console.error(error));
+
+// Mapeamento de estágios para cada cliente
+const stages = {};
+
+// Mapeamento de inatividade para cada cliente
+const inactiveTimeouts = {};
+
+// Função para iniciar o bot
+function startBot(venombot) {
+  // Configura o ouvinte de mensagens
+  venombot.onMessage((message) => {
+    // Verifica se a mensagem recebida é de um cliente e não foi enviada pelo próprio bot
+    if (!message.isGroupMsg && message.body && message.fromMe === false) {
+      // Verifica o estágio atual do atendimento
+      const stage = getStage(message.from);
+
+      if (stage === 0) {
+        // Estágio 0: Saudação inicial e opções de atendimento
+        const response = `👋 Olá! Seja bem-vindo ao atendimento da *VipTech*.\nPosso te ajudar? Selecione a opção para prosseguir:\n\n   1️⃣ - CRIAR UM CHAMADO\n   2️⃣ - OUTROS\n   0️⃣ - FALAR COM ATENDENTE`;
+        // Envia a mensagem de resposta
+        venombot.sendText(message.from, response);
+
+        // Atualiza o estágio para o próximo
+        setStage(message.from, 1);
+      } else if (stage === 1) {
+        // Estágio 1: Criação de chamado
+        if (message.body === '1') {
+          // Cliente selecionou a opção de criar um chamado
+          const response = `Por favor, informe o problema que você está enfrentando.`;
+
+          // Envia a mensagem de resposta
+          venombot.sendText(message.from, response);
+
+          // Atualiza o estágio para o próximo
+          setStage(message.from, 2);
+        } else if (message.body === '0') {
+          // Cliente selecionou a opção de falar com um atendente
+          const response = `Você será direcionado para um atendente em breve.`;
+
+          // Envia a mensagem de resposta
+          venombot.sendText(message.from, response);
+
+          // Atualiza o estágio para o próximo
+          setStage(message.from, 3);
+
+          // Define um atraso de 60 minutos para o próximo estágio
+          setTimeout(() => {
+            setStage(message.from, 0);
+          }, 60 * 60 * 1000);
+        } else {
+          // Cliente selecionou uma opção inválida
+          const response = `Opção inválida. Por favor, selecione uma das opções fornecidas.`;
+
+          // Envia a mensagem de resposta
+          venombot.sendText(message.from, response);
+        }
+      } else if (stage === 2) {
+        // Estágio 2: Confirmação do problema
+        // Aqui você pode implementar a lógica para lidar com a confirmação do problema relatado pelo cliente
+        // Por exemplo, você pode armazenar a mensagem em uma variável e perguntar ao cliente se a mensagem está correta antes de prosseguir com a criação do chamado
+
+        // Exemplo de código para confirmar a mensagem enviada pelo cliente
+        const response = `Você está relatando o seguinte problema:\n\n${message.body}\n\nPor favor, confirme se a mensagem está correta.`;
+
+        // Envia a mensagem de resposta
+        venombot.sendText(message.from, response);
+
+        // Atualiza o estágio para o próximo
+        setStage(message.from, 3);
+
+        // Define um atraso de 60 minutos para o próximo estágio
+        setTimeout(() => {
+          setStage(message.from, 0);
+        }, 60 * 60 * 1000);
+      } else if (stage === 3) {
+        // Estágio 3: Falar com atendente
+        // Aqui você pode implementar a lógica para direcionar a mensagem do cliente para um atendente real ou fornecer mais informações sobre como entrar em contato com a equipe de suporte
+
+        // Exemplo de código para direcionar a mensagem para um atendente
+        const response = `Sua mensagem será encaminhada para um atendente. Em breve você receberá um retorno.`;
+
+        // Envia a mensagem de resposta
+        venombot.sendText(message.from, response);
+
+        // Define um atraso de 60 minutos para o próximo estágio
+        setInactiveTimeout(message.from, 60 * 60 * 1000);
+      }
+    }
+  });
+}
+
+// Função para obter o estágio atual do atendimento
+function getStage(clientId) {
+  // Retorna o estágio atual do cliente ou 0 se não estiver definido
+  return stages[clientId] || 0;
+}
+
+// Função para definir o estágio do atendimento
+function setStage(clientId, stage) {
+  // Atualiza o estágio do cliente
+  stages[clientId] = stage;
+}
+
+// Função para definir o tempo de inatividade do cliente
+function setInactiveTimeout(clientId, timeout) {
+  // Limpa o timeout de inatividade existente, se houver
+  clearTimeout(inactiveTimeouts[clientId]);
+
+  // Define um novo timeout de inatividade
+  inactiveTimeouts[clientId] = setTimeout(() => {
+    setStage(clientId, 0);
+    clearTimeout(inactiveTimeouts[clientId]);
+  }, timeout);
+}
